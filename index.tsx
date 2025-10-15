@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { MainsApp, EvaluationResult } from './Awapp/index.tsx';
@@ -158,7 +159,7 @@ const MentorApp: React.FC<{
 
     const [chatInput, setChatInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [showTools, setShowTools] = useState(false);
+    const [openToolsMenu, setOpenToolsMenu] = useState<string | null>(null);
     const [activeTool, setActiveTool] = useState<'mains' | 'prelims' | 'interview' | 'pyq' | 'essay' | 'mentorCall' | 'notesPro' | 'mentorModes' | 'chronoScout' | 'anthropology' | 'mindMap' | null>(null);
     const [editingChatId, setEditingChatId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
@@ -170,7 +171,7 @@ const MentorApp: React.FC<{
     const aiRef = useRef<GoogleGenAI | null>(null);
     const chatInstances = useRef<Map<string, GenAIChat>>(new Map());
     const chatContentRef = useRef<HTMLDivElement>(null);
-    const toolsMenuContainerRef = useRef<HTMLDivElement>(null);
+    const toolsMenuContainerRef = useRef<Record<string, HTMLDivElement | null>>({});
     const messageMenuRef = useRef<HTMLDivElement>(null);
     const chatMenuRef = useRef<HTMLDivElement>(null);
     const initialLoadComplete = useRef(false);
@@ -275,8 +276,11 @@ const MentorApp: React.FC<{
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (showTools && toolsMenuContainerRef.current && !toolsMenuContainerRef.current.contains(event.target as Node)) {
-                setShowTools(false);
+            if (openToolsMenu) {
+                const currentRef = toolsMenuContainerRef.current[openToolsMenu];
+                if (currentRef && !currentRef.contains(event.target as Node)) {
+                    setOpenToolsMenu(null);
+                }
             }
             if (isChatMenuOpen && chatMenuRef.current && !chatMenuRef.current.contains(event.target as Node)) {
                 setIsChatMenuOpen(false);
@@ -284,7 +288,7 @@ const MentorApp: React.FC<{
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showTools, isChatMenuOpen]);
+    }, [openToolsMenu, isChatMenuOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -1193,59 +1197,95 @@ Your output should be clean, readable, and well-structured markdown.
                 {!activeTool && (
                     <div className="chat-input-container">
                         <div className="chat-input-area">
-                            <div className="tools-menu-container" ref={toolsMenuContainerRef}>
-                                <button className="tool-toggle-button" onClick={() => setShowTools(s => !s)} aria-label="Open tools menu" aria-haspopup="true" aria-expanded={showTools}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                                </button>
-                                {showTools && (
-                                    <div className="tools-popup" role="menu">
-                                        <button role="menuitem" onClick={() => { setActiveTool('mains'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                                            Answer Evaluator
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('prelims'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                            Prelims Quizzer
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('interview'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
-                                            Interview Pro
-                                        </button>
-                                         <button role="menuitem" onClick={() => { setActiveTool('pyq'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                            PYQ Thematic Analyzer
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('essay'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
-                                            Essay Architect
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('mindMap'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11.5a1.5 1.5 0 0 1 3 0V12a1.5 1.5 0 0 1-3 0V11.5z"/><path d="M15 6.5a1.5 1.5 0 0 1 3 0V7a1.5 1.5 0 0 1-3 0V6.5z"/><path d="M15 17.5a1.5 1.5 0 0 1 3 0V18a1.5 1.5 0 0 1-3 0V17.5z"/><path d="M6 12h5a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H8.5"/><path d="M6 12h5a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2H8.5"/><path d="M13 14v.5a1.5 1.5 0 0 0 3 0V14"/><path d="M13 10v-.5a1.5 1.5 0 0 1 3 0V10"/></svg>
-                                            Mind Architect
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('notesPro'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                            Notes Pro
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('anthropology'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                                            Anthro Architect
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('chronoScout'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                            CA Analyst (ChronoScout)
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('mentorModes'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                            Mentor Modes
-                                        </button>
-                                        <button role="menuitem" onClick={() => { setActiveTool('mentorCall'); setActiveItemId(null); setShowTools(false); }}>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-                                            1:1 Mentor Call
-                                        </button>
-                                    </div>
-                                )}
+                            <div className="tool-buttons-wrapper">
+                                <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['practice'] = el)}>
+                                    <button 
+                                        className={`tool-group-button ${openToolsMenu === 'practice' ? 'active' : ''}`}
+                                        onClick={() => setOpenToolsMenu(p => p === 'practice' ? null : 'practice')}
+                                        title="Practice Zone"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                                        <span>Practice</span>
+                                    </button>
+                                     {openToolsMenu === 'practice' && (
+                                        <div className="tools-popup" role="menu">
+                                            <button role="menuitem" onClick={() => { setActiveTool('mains'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                                Answer Evaluator
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('prelims'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                                Prelims Quizzer
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('interview'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+                                                Interview Pro
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['study'] = el)}>
+                                    <button 
+                                        className={`tool-group-button ${openToolsMenu === 'study' ? 'active' : ''}`}
+                                        onClick={() => setOpenToolsMenu(p => p === 'study' ? null : 'study')}
+                                        title="Study Tools"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                                        <span>Study</span>
+                                    </button>
+                                     {openToolsMenu === 'study' && (
+                                        <div className="tools-popup" role="menu">
+                                            <button role="menuitem" onClick={() => { setActiveTool('notesPro'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                                Notes Pro
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('pyq'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                                                PYQ Analyzer
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('essay'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+                                                Essay Architect
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mindMap'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11.5a1.5 1.5 0 0 1 3 0V12a1.5 1.5 0 0 1-3 0V11.5z"/><path d="M15 6.5a1.5 1.5 0 0 1 3 0V7a1.5 1.5 0 0 1-3 0V6.5z"/><path d="M15 17.5a1.5 1.5 0 0 1 3 0V18a1.5 1.5 0 0 1-3 0V17.5z"/><path d="M6 12h5a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H8.5"/><path d="M6 12h5a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2H8.5"/><path d="M13 14v.5a1.5 1.5 0 0 0 3 0V14"/><path d="M13 10v-.5a1.5 1.5 0 0 1 3 0V10"/></svg>
+                                                Mind Architect
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('anthropology'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                                                Anthro Architect
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('chronoScout'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                                CA Analyst (ChronoScout)
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                 <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['mentor'] = el)}>
+                                    <button 
+                                        className={`tool-group-button ${openToolsMenu === 'mentor' ? 'active' : ''}`}
+                                        onClick={() => setOpenToolsMenu(p => p === 'mentor' ? null : 'mentor')}
+                                        title="Mentor Sessions"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                        <span>Mentor</span>
+                                    </button>
+                                     {openToolsMenu === 'mentor' && (
+                                        <div className="tools-popup" role="menu">
+                                            <button role="menuitem" onClick={() => { setActiveTool('mentorModes'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                                Mentor Modes
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mentorCall'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+                                                1:1 Mentor Call
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+
                             <input
                                 type="text"
                                 value={chatInput}
