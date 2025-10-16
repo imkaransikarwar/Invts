@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { MainsApp, EvaluationResult } from './Awapp/index.tsx';
@@ -10,7 +9,6 @@ import { MentorCallApp, TranscriptEntry as MentorCallTranscriptEntry } from './M
 import { NotesProApp, NotesProResult } from './NotesProApp/Index.tsx';
 import { MentorModesApp, MentorModesResult } from './MentorModesApp/Index.tsx';
 import { ChronoScoutApp, ChronoScoutResult } from './CaApp/Index.tsx';
-import { AnthropologyApp, AnthropologyAnalysisResult } from './AnthropologyApp/Index.tsx';
 import { MindMapApp, MindMapResult } from './MindMapApp/Index.tsx';
 import { GoogleGenAI, Chat as GenAIChat } from "@google/genai";
 import { AuthPage } from './user_data/Auth.tsx';
@@ -122,13 +120,6 @@ type ChronoScoutHistoryItem = {
     result: ChronoScoutResult;
 }
 
-type AnthropologyHistoryItem = {
-    id: string;
-    title: string;
-    timestamp: number;
-    result: AnthropologyAnalysisResult;
-}
-
 type MindMapHistoryItem = {
     id: string;
     title: string;
@@ -153,14 +144,13 @@ const MentorApp: React.FC<{
     const [notesProHistory, setNotesProHistory] = useState<NotesProHistoryItem[]>([]);
     const [mentorModesHistory, setMentorModesHistory] = useState<MentorModesHistoryItem[]>([]);
     const [chronoScoutHistory, setChronoScoutHistory] = useState<ChronoScoutHistoryItem[]>([]);
-    const [anthropologyHistory, setAnthropologyHistory] = useState<AnthropologyHistoryItem[]>([]);
     const [mindMapHistory, setMindMapHistory] = useState<MindMapHistoryItem[]>([]);
     const [activeItemId, setActiveItemId] = useState<string | null>(null);
 
     const [chatInput, setChatInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [openToolsMenu, setOpenToolsMenu] = useState<string | null>(null);
-    const [activeTool, setActiveTool] = useState<'mains' | 'prelims' | 'interview' | 'pyq' | 'essay' | 'mentorCall' | 'notesPro' | 'mentorModes' | 'chronoScout' | 'anthropology' | 'mindMap' | null>(null);
+    const [openToolMenu, setOpenToolMenu] = useState<'study' | 'practice' | 'mentor' | null>(null);
+    const [activeTool, setActiveTool] = useState<'mains' | 'prelims' | 'interview' | 'pyq' | 'essay' | 'mentorCall' | 'notesPro' | 'mentorModes' | 'chronoScout' | 'mindMap' | null>(null);
     const [editingChatId, setEditingChatId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [openMessageMenu, setOpenMessageMenu] = useState<number | null>(null);
@@ -171,7 +161,7 @@ const MentorApp: React.FC<{
     const aiRef = useRef<GoogleGenAI | null>(null);
     const chatInstances = useRef<Map<string, GenAIChat>>(new Map());
     const chatContentRef = useRef<HTMLDivElement>(null);
-    const toolsMenuContainerRef = useRef<Record<string, HTMLDivElement | null>>({});
+    const toolsMenuContainerRef = useRef<HTMLDivElement>(null);
     const messageMenuRef = useRef<HTMLDivElement>(null);
     const chatMenuRef = useRef<HTMLDivElement>(null);
     const initialLoadComplete = useRef(false);
@@ -192,7 +182,6 @@ const MentorApp: React.FC<{
             setNotesProHistory(data.notesPro || []);
             setMentorModesHistory(data.mentorModes || []);
             setChronoScoutHistory(data.chronoScouts || []);
-            setAnthropologyHistory(data.anthropologyAnalyses || []);
             setMindMapHistory(data.mindMaps || []);
             setActiveItemId(data.activeItemId);
             initialLoadComplete.current = true;
@@ -213,13 +202,13 @@ const MentorApp: React.FC<{
                 notesPro: notesProHistory,
                 mentorModes: mentorModesHistory,
                 chronoScouts: chronoScoutHistory,
-                anthropologyAnalyses: anthropologyHistory,
+                anthropologyAnalyses: [], // Removed from app, saving empty array
                 mindMaps: mindMapHistory,
                 activeItemId,
             };
             dataService.saveUserData(currentUser.username, userData);
         }
-    }, [chats, evaluationHistory, quizHistory, interviewHistory, pyqHistory, essayHistory, mentorCallHistory, notesProHistory, mentorModesHistory, chronoScoutHistory, anthropologyHistory, mindMapHistory, activeItemId, currentUser]);
+    }, [chats, evaluationHistory, quizHistory, interviewHistory, pyqHistory, essayHistory, mentorCallHistory, notesProHistory, mentorModesHistory, chronoScoutHistory, mindMapHistory, activeItemId, currentUser]);
 
     const handleNewChat = useCallback(() => {
         const newChat: MentorChat = {
@@ -251,7 +240,6 @@ const MentorApp: React.FC<{
     const viewingNotesProData = useMemo(() => notesProHistory.find(n => n.id === activeItemId)?.result, [notesProHistory, activeItemId]);
     const viewingMentorModesData = useMemo(() => mentorModesHistory.find(m => m.id === activeItemId)?.result, [mentorModesHistory, activeItemId]);
     const viewingChronoScoutData = useMemo(() => chronoScoutHistory.find(cs => cs.id === activeItemId)?.result, [chronoScoutHistory, activeItemId]);
-    const viewingAnthropologyData = useMemo(() => anthropologyHistory.find(a => a.id === activeItemId)?.result, [anthropologyHistory, activeItemId]);
     const viewingMindMapData = useMemo(() => mindMapHistory.find(m => m.id === activeItemId)?.result, [mindMapHistory, activeItemId]);
 
     useEffect(() => {
@@ -263,24 +251,21 @@ const MentorApp: React.FC<{
      useEffect(() => {
         if (!initialLoadComplete.current) return;
 
-        if (chats.length === 0 && evaluationHistory.length === 0 && quizHistory.length === 0 && interviewHistory.length === 0 && pyqHistory.length === 0 && essayHistory.length === 0 && mentorCallHistory.length === 0 && notesProHistory.length === 0 && mentorModesHistory.length === 0 && chronoScoutHistory.length === 0 && anthropologyHistory.length === 0 && mindMapHistory.length === 0) {
+        if (chats.length === 0 && evaluationHistory.length === 0 && quizHistory.length === 0 && interviewHistory.length === 0 && pyqHistory.length === 0 && essayHistory.length === 0 && mentorCallHistory.length === 0 && notesProHistory.length === 0 && mentorModesHistory.length === 0 && chronoScoutHistory.length === 0 && mindMapHistory.length === 0) {
             handleNewChat();
             return;
         }
-        const allItems = [...chats, ...evaluationHistory, ...quizHistory, ...interviewHistory, ...pyqHistory, ...essayHistory, ...mentorCallHistory, ...notesProHistory, ...mentorModesHistory, ...chronoScoutHistory, ...anthropologyHistory, ...mindMapHistory];
+        const allItems = [...chats, ...evaluationHistory, ...quizHistory, ...interviewHistory, ...pyqHistory, ...essayHistory, ...mentorCallHistory, ...notesProHistory, ...mentorModesHistory, ...chronoScoutHistory, ...mindMapHistory];
         const activeItemExists = allItems.some(item => item.id === activeItemId);
         if (!activeItemId || !activeItemExists) {
-            setActiveItemId(chats[0]?.id || evaluationHistory[0]?.id || quizHistory[0]?.id || interviewHistory[0]?.id || pyqHistory[0]?.id || essayHistory[0]?.id || mentorCallHistory[0]?.id || notesProHistory[0]?.id || mentorModesHistory[0]?.id || chronoScoutHistory[0]?.id || anthropologyHistory[0]?.id || mindMapHistory[0]?.id || null);
+            setActiveItemId(chats[0]?.id || evaluationHistory[0]?.id || quizHistory[0]?.id || interviewHistory[0]?.id || pyqHistory[0]?.id || essayHistory[0]?.id || mentorCallHistory[0]?.id || notesProHistory[0]?.id || mentorModesHistory[0]?.id || chronoScoutHistory[0]?.id || mindMapHistory[0]?.id || null);
         }
-    }, [chats, evaluationHistory, quizHistory, interviewHistory, pyqHistory, essayHistory, mentorCallHistory, notesProHistory, mentorModesHistory, chronoScoutHistory, anthropologyHistory, mindMapHistory, activeItemId, handleNewChat]);
+    }, [chats, evaluationHistory, quizHistory, interviewHistory, pyqHistory, essayHistory, mentorCallHistory, notesProHistory, mentorModesHistory, chronoScoutHistory, mindMapHistory, activeItemId, handleNewChat]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (openToolsMenu) {
-                const currentRef = toolsMenuContainerRef.current[openToolsMenu];
-                if (currentRef && !currentRef.contains(event.target as Node)) {
-                    setOpenToolsMenu(null);
-                }
+            if (openToolMenu && toolsMenuContainerRef.current && !toolsMenuContainerRef.current.contains(event.target as Node)) {
+                setOpenToolMenu(null);
             }
             if (isChatMenuOpen && chatMenuRef.current && !chatMenuRef.current.contains(event.target as Node)) {
                 setIsChatMenuOpen(false);
@@ -288,7 +273,7 @@ const MentorApp: React.FC<{
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [openToolsMenu, isChatMenuOpen]);
+    }, [openToolMenu, isChatMenuOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -395,19 +380,13 @@ Your output should be clean, readable, and well-structured markdown.
         closeSidebar();
     };
 
-    const handleSelectAnthropology = (item: AnthropologyHistoryItem) => {
-        setActiveItemId(item.id);
-        setActiveTool('anthropology');
-        closeSidebar();
-    };
-
     const handleSelectMindMap = (item: MindMapHistoryItem) => {
         setActiveItemId(item.id);
         setActiveTool('mindMap');
         closeSidebar();
     };
 
-    const handleDeleteItem = (e: React.MouseEvent, idToDelete: string, type: 'chat' | 'evaluation' | 'quiz' | 'interview' | 'pyq' | 'essay' | 'mentorCall' | 'notesPro' | 'mentorModes' | 'chronoScout' | 'anthropology' | 'mindMap') => {
+    const handleDeleteItem = (e: React.MouseEvent, idToDelete: string, type: 'chat' | 'evaluation' | 'quiz' | 'interview' | 'pyq' | 'essay' | 'mentorCall' | 'notesPro' | 'mentorModes' | 'chronoScout' | 'mindMap') => {
         e.stopPropagation();
 
         const itemMap = {
@@ -421,7 +400,6 @@ Your output should be clean, readable, and well-structured markdown.
             notesPro: { items: notesProHistory, setter: setNotesProHistory, name: "Notes" },
             mentorModes: { items: mentorModesHistory, setter: setMentorModesHistory, name: "Mentor Session" },
             chronoScout: { items: chronoScoutHistory, setter: setChronoScoutHistory, name: "CA Analysis" },
-            anthropology: { items: anthropologyHistory, setter: setAnthropologyHistory, name: "Anthro Analysis" },
             mindMap: { items: mindMapHistory, setter: setMindMapHistory, name: "Mind Map" },
         };
 
@@ -438,7 +416,7 @@ Your output should be clean, readable, and well-structured markdown.
             }
 
             if (activeItemId === idToDelete) {
-                const nextActiveItem = chats[0] || evaluationHistory[0] || quizHistory[0] || interviewHistory[0] || pyqHistory[0] || essayHistory[0] || mentorCallHistory[0] || notesProHistory[0] || mentorModesHistory[0] || chronoScoutHistory[0] || anthropologyHistory[0] || mindMapHistory[0] || null;
+                const nextActiveItem = chats[0] || evaluationHistory[0] || quizHistory[0] || interviewHistory[0] || pyqHistory[0] || essayHistory[0] || mentorCallHistory[0] || notesProHistory[0] || mentorModesHistory[0] || chronoScoutHistory[0] || mindMapHistory[0] || null;
                 if(nextActiveItem && nextActiveItem.id !== idToDelete) {
                    setActiveItemId(nextActiveItem.id);
                 } else if (newItems.length > 0) {
@@ -612,6 +590,10 @@ Your output should be clean, readable, and well-structured markdown.
         setOpenMessageMenu(prev => (prev === index ? null : index));
     };
 
+    const handleToggleToolMenu = (menu: 'study' | 'practice' | 'mentor') => {
+        setOpenToolMenu(prev => (prev === menu ? null : menu));
+    };
+
     const handleEvaluationComplete = (results: EvaluationResult[]) => {
         const newEval: EvaluationHistoryItem = {
             id: `eval-${Date.now()}`,
@@ -711,17 +693,6 @@ Your output should be clean, readable, and well-structured markdown.
         setActiveItemId(newAnalysis.id);
     };
 
-    const handleAnthropologyAnalysisComplete = (result: AnthropologyAnalysisResult) => {
-        const newAnalysis: AnthropologyHistoryItem = {
-            id: `anthro-${Date.now()}`,
-            title: `Anthro: ${result.topic}`,
-            timestamp: Date.now(),
-            result,
-        };
-        setAnthropologyHistory(prev => [newAnalysis, ...prev]);
-        setActiveItemId(newAnalysis.id);
-    };
-    
     const handleMindMapSave = (result: MindMapResult) => {
         const existingMapIndex = mindMapHistory.findIndex(m => m.id === activeItemId);
 
@@ -764,7 +735,6 @@ Your output should be clean, readable, and well-structured markdown.
             case 'notesPro': return 'Notes Pro';
             case 'mentorModes': return 'Mentor Modes';
             case 'chronoScout': return 'ChronoScout: Current Affairs';
-            case 'anthropology': return 'Anthro Architect';
             case 'mindMap': return 'Mind Architect';
             default: return '';
         }
@@ -951,23 +921,6 @@ Your output should be clean, readable, and well-structured markdown.
                         </div>
                     </div>
                     <div className="history-section">
-                        <h3>Anthro Notes</h3>
-                        <div className="history-items-container">
-                        {anthropologyHistory.map(item => (
-                            <div key={item.id} className={`chat-list-item-wrapper ${item.id === activeItemId ? 'active' : ''}`}>
-                                <button className="chat-list-item" onClick={() => handleSelectAnthropology(item)}>
-                                    {item.title}
-                                </button>
-                                <div className="chat-item-actions">
-                                     <button className="chat-action-button delete-button" onClick={(e) => handleDeleteItem(e, item.id, 'anthropology')} aria-label={`Delete Anthro Analysis: ${item.title}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                        </div>
-                    </div>
-                    <div className="history-section">
                         <h3>CA Analyses</h3>
                         <div className="history-items-container">
                         {chronoScoutHistory.map(item => (
@@ -1055,7 +1008,6 @@ Your output should be clean, readable, and well-structured markdown.
                                 {activeTool === 'notesPro' && <NotesProApp onAnalysisComplete={handleNotesProComplete} initialData={viewingNotesProData} />}
                                 {activeTool === 'mentorModes' && <MentorModesApp onSessionComplete={handleMentorModesComplete} initialData={viewingMentorModesData} />}
                                 {activeTool === 'chronoScout' && <ChronoScoutApp onAnalysisComplete={handleChronoScoutComplete} initialData={viewingChronoScoutData} />}
-                                {activeTool === 'anthropology' && <AnthropologyApp onAnalysisComplete={handleAnthropologyAnalysisComplete} initialData={viewingAnthropologyData} />}
                                 {activeTool === 'mindMap' && <MindMapApp onSave={handleMindMapSave} initialData={viewingMindMapData} />}
                             </div>
                         </div>
@@ -1197,87 +1149,68 @@ Your output should be clean, readable, and well-structured markdown.
                 {!activeTool && (
                     <div className="chat-input-container">
                         <div className="chat-input-area">
-                            <div className="tool-buttons-wrapper">
-                                <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['practice'] = el)}>
-                                    <button 
-                                        className={`tool-group-button ${openToolsMenu === 'practice' ? 'active' : ''}`}
-                                        onClick={() => setOpenToolsMenu(p => p === 'practice' ? null : 'practice')}
-                                        title="Practice Zone"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                                        <span>Practice</span>
+                            <div className="tools-menu-wrapper" ref={toolsMenuContainerRef}>
+                                <div className="tools-menu-container">
+                                    <button className="tool-toggle-button" onClick={() => handleToggleToolMenu('study')} aria-label="Open Study Tools menu" aria-haspopup="true" aria-expanded={openToolMenu === 'study'}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
                                     </button>
-                                     {openToolsMenu === 'practice' && (
+                                    {openToolMenu === 'study' && (
                                         <div className="tools-popup" role="menu">
-                                            <button role="menuitem" onClick={() => { setActiveTool('mains'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                                                Answer Evaluator
-                                            </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('prelims'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                                Prelims Quizzer
-                                            </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('interview'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
-                                                Interview Pro
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['study'] = el)}>
-                                    <button 
-                                        className={`tool-group-button ${openToolsMenu === 'study' ? 'active' : ''}`}
-                                        onClick={() => setOpenToolsMenu(p => p === 'study' ? null : 'study')}
-                                        title="Study Tools"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                                        <span>Study</span>
-                                    </button>
-                                     {openToolsMenu === 'study' && (
-                                        <div className="tools-popup" role="menu">
-                                            <button role="menuitem" onClick={() => { setActiveTool('notesPro'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                            <button role="menuitem" onClick={() => { setActiveTool('notesPro'); setActiveItemId(null); setOpenToolMenu(null); }}>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                                                 Notes Pro
                                             </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('pyq'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-                                                PYQ Analyzer
-                                            </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('essay'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
-                                                Essay Architect
-                                            </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('mindMap'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mindMap'); setActiveItemId(null); setOpenToolMenu(null); }}>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11.5a1.5 1.5 0 0 1 3 0V12a1.5 1.5 0 0 1-3 0V11.5z"/><path d="M15 6.5a1.5 1.5 0 0 1 3 0V7a1.5 1.5 0 0 1-3 0V6.5z"/><path d="M15 17.5a1.5 1.5 0 0 1 3 0V18a1.5 1.5 0 0 1-3 0V17.5z"/><path d="M6 12h5a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H8.5"/><path d="M6 12h5a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2H8.5"/><path d="M13 14v.5a1.5 1.5 0 0 0 3 0V14"/><path d="M13 10v-.5a1.5 1.5 0 0 1 3 0V10"/></svg>
                                                 Mind Architect
                                             </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('anthropology'); setActiveItemId(null); setOpenToolsMenu(null); }}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                                                Anthro Architect
+                                            <button role="menuitem" onClick={() => { setActiveTool('pyq'); setActiveItemId(null); setOpenToolMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                                                PYQ Thematic Analyzer
                                             </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('chronoScout'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                            <button role="menuitem" onClick={() => { setActiveTool('chronoScout'); setActiveItemId(null); setOpenToolMenu(null); }}>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                                                 CA Analyst (ChronoScout)
                                             </button>
                                         </div>
                                     )}
                                 </div>
-                                 <div className="tools-menu-container" ref={el => (toolsMenuContainerRef.current['mentor'] = el)}>
-                                    <button 
-                                        className={`tool-group-button ${openToolsMenu === 'mentor' ? 'active' : ''}`}
-                                        onClick={() => setOpenToolsMenu(p => p === 'mentor' ? null : 'mentor')}
-                                        title="Mentor Sessions"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                                        <span>Mentor</span>
+                                <div className="tools-menu-container">
+                                    <button className="tool-toggle-button" onClick={() => handleToggleToolMenu('practice')} aria-label="Open Practice Tools menu" aria-haspopup="true" aria-expanded={openToolMenu === 'practice'}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                                     </button>
-                                     {openToolsMenu === 'mentor' && (
+                                    {openToolMenu === 'practice' && (
                                         <div className="tools-popup" role="menu">
-                                            <button role="menuitem" onClick={() => { setActiveTool('mentorModes'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mains'); setActiveItemId(null); setOpenToolMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                                Answer Evaluator
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('prelims'); setActiveItemId(null); setOpenToolMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                                Prelims Quizzer
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('essay'); setActiveItemId(null); setOpenToolMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+                                                Essay Architect
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="tools-menu-container">
+                                    <button className="tool-toggle-button" onClick={() => handleToggleToolMenu('mentor')} aria-label="Open Mentorship Tools menu" aria-haspopup="true" aria-expanded={openToolMenu === 'mentor'}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    </button>
+                                    {openToolMenu === 'mentor' && (
+                                        <div className="tools-popup" role="menu">
+                                            <button role="menuitem" onClick={() => { setActiveTool('interview'); setActiveItemId(null); setOpenToolMenu(null); }}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+                                                Interview Pro
+                                            </button>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mentorModes'); setActiveItemId(null); setOpenToolMenu(null); }}>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                                 Mentor Modes
                                             </button>
-                                            <button role="menuitem" onClick={() => { setActiveTool('mentorCall'); setActiveItemId(null); setOpenToolsMenu(null); }}>
+                                            <button role="menuitem" onClick={() => { setActiveTool('mentorCall'); setActiveItemId(null); setOpenToolMenu(null); }}>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
                                                 1:1 Mentor Call
                                             </button>
